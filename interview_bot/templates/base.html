@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🚀 AI Interview Coach</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 10px; margin: 10px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .btn { background: #667eea; color: white; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px; }
+        .btn:hover { background: #764ba2; }
+        .btn-secondary { background: #6c757d; }
+        .btn-success { background: #28a745; }
+        .btn-info { background: #17a2b8; }
+        .progress { background: #e9ecef; border-radius: 10px; margin: 20px 0; }
+        .progress-bar { background: #667eea; height: 10px; border-radius: 10px; }
+        .feedback { background: #e7f3ff; border-left: 4px solid #667eea; padding: 15px; margin: 10px 0; }
+        textarea { width: 100%; height: 150px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
+        .stats { display: flex; justify-content: space-between; margin: 10px 0; }
+        .stat-card { background: white; padding: 15px; border-radius: 5px; text-align: center; flex: 1; margin: 0 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .role-option { background: white; padding: 20px; border-radius: 10px; margin: 10px; text-align: center; border: 2px solid transparent; cursor: pointer; }
+        .role-option:hover { border-color: #667eea; }
+        .role-container { display: flex; gap: 15px; }
+        .login-form { max-width: 400px; margin: 0 auto; }
+        .form-group { margin: 15px 0; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .user-info { background: #e8f5e8; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        
+        /* Modal Styles */
+        .modal { 
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.5); 
+            z-index: 1000;
+        }
+        .modal.show { 
+            display: block; 
+        }
+        .modal-content { 
+            background: white; 
+            margin: 15% auto; 
+            padding: 30px; 
+            border-radius: 10px; 
+            max-width: 500px; 
+            text-align: center; 
+            position: relative;
+            z-index: 1001;
+        }
+        .congrats { 
+            background: linear-gradient(135deg, #ffd700, #ffed4e); 
+            padding: 20px; 
+            border-radius: 10px; 
+            border: 3px solid #ffc107;
+        }
+        
+        /* Voice Recording Styles */
+        #recordingControls {
+            margin: 15px 0;
+        }
+        
+        #recordingStatus {
+            padding: 10px;
+            border-radius: 5px;
+            background: white;
+        }
+        
+        #statusText {
+            margin: 5px 0;
+            font-weight: bold;
+        }
+        
+        .recording-btn {
+            margin: 5px;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Congratulations Modal -->
+    <div id="congratsModal" class="modal {% if session.get('show_congrats') %}show{% endif %}">
+        <div class="modal-content">
+            <div class="congrats">
+                <h2>🎉 Congratulations!</h2>
+                <h3 id="congratsMessage">Round Completed Successfully!</h3>
+                <p>You're doing great! Ready for the next challenge?</p>
+                <button class="btn btn-success" onclick="closeModal()">🚀 Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="header">
+        <h1>🚀 AI Interview Coach</h1>
+        <p>Practice • Get Feedback • Improve • Succeed</p>
+        {% if session.get('username') %}
+        <div class="user-info">
+            👤 Welcome, <strong>{{ session.username }}</strong>! 
+            | <a href="/scores" style="color: white;">📊 My Scores</a>
+            | <a href="/logout" style="color: white;">🚪 Logout</a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if not session.get('username') %}
+    <!-- 🔐 LOGIN / REGISTER SECTION -->
+    <div class="card">
+        <h2>🔐 Login to Track Your Progress</h2>
+        <div class="login-form">
+            <form method="POST" action="/login">
+                <div class="form-group">
+                    <label>Username:</label>
+                    <input type="text" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" name="password" required>
+                </div>
+                <button class="btn" type="submit">🔐 Login</button>
+                <button class="btn btn-secondary" type="submit" formaction="/register">📝 Register</button>
+            </form>
+        </div>
+        <p style="text-align: center; margin-top: 15px; color: #666;">
+            💡 Don't have an account? Register with any username and password!
+        </p>
+    </div>
+
+    {% elif not session.get('field') %}
+    <!-- 🎯 ROLE SELECTION (after login) -->
+    {% if progress_data and progress_data.field %}
+    <div class="card" style="background: #e8f5e8; border-left: 4px solid #28a745;">
+        <h2>🔄 Resume Your Interview</h2>
+        <p>You have an unfinished interview in progress:</p>
+        <p><strong>Field:</strong> {{ progress_data.field.title() }} | 
+           <strong>Round:</strong> {{ progress_data.round }} | 
+           <strong>Progress:</strong> {{ progress_data.answers|length }} answers given</p>
+        <a href="/resume_interview" class="btn btn-success">🔄 Resume Interview</a>
+        <form method="POST" action="/restart" style="display: inline;">
+            <button class="btn btn-secondary" type="submit">🗑️ Start Fresh</button>
+        </form>
+    </div>
+    {% endif %}
+    
+    <div class="card">
+        <h2>🎯 Choose Your Interview Type</h2>
+        <div class="role-container">
+            <div class="role-option" style="flex: 1;">
+                <h3>💻 Technology</h3>
+                <p>Software Engineering, Development, IT</p>
+                <form method="POST" action="/start">
+                    <input type="hidden" name="field" value="technology">
+                    <button class="btn" type="submit">Start Tech Interview</button>
+                </form>
+            </div>
+            <div class="role-option" style="flex: 1;">
+                <h3>💼 Business</h3>
+                <p>Management, Marketing, Sales, Analysis</p>
+                <form method="POST" action="/start">
+                    <input type="hidden" name="field" value="business">
+                    <button class="btn" type="submit">Start Business Interview</button>
+                </form>
+            </div>
+            <div class="role-option" style="flex: 1;">
+                <h3>🎨 Design</h3>
+                <p>UX/UI, Graphic Design, Product Design</p>
+                <form method="POST" action="/start">
+                    <input type="hidden" name="field" value="design">
+                    <button class="btn" type="submit">Start Design Interview</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- 🎤 INTERVIEW IN PROGRESS - WITH SAFE DEFAULTS -->
+    {% set field = session.get('field', 'technology') %}
+    {% set round_num = session.get('round', 1) %}
+    {% set question_num = session.get('question_num', 0) %}
+    {% set round_names = QUESTION_BANKS[field].keys()|list if field in QUESTION_BANKS else ['Round 1'] %}
+    {% set current_round_name = round_names[round_num - 1] if round_num <= round_names|length else 'Round 1' %}
+    {% set questions = QUESTION_BANKS[field][current_round_name] if field in QUESTION_BANKS and current_round_name in QUESTION_BANKS[field] else ['Tell me about yourself'] %}
+    {% set total_questions = questions|length %}
+    
+    <div class="card">
+        <h2>🎤 {{ field.upper() }} Interview</h2>
+        <h3>📊 {{ current_round_name }}</h3>
+        
+        <!-- 📈 PROGRESS BAR - FIXED -->
+        <div class="progress">
+            <!-- Simple and reliable progress calculation -->
+            {% set questions_done = ((round_num - 1) * 3) + question_num %}
+            {% set total_questions_all = 9 %}
+            {% set progress_percent = ((questions_done / total_questions_all) * 100)|round(0) if total_questions_all > 0 else 0 %}
+            <div class="progress-bar" style="width: {{ progress_percent }}%;"></div>
+        </div>
+        <p>Progress: {{ current_round_name }} - Question {{ question_num + 1 }}/{{ total_questions }}</p>
+        
+        <!-- 🏆 CURRENT SCORE -->
+        {% if session.answers %}
+            {% set current_scores = [] %}
+            {% for answer in session.answers %}
+                {% if answer.analysis and answer.analysis.quality_score %}
+                    {% set _ = current_scores.append(answer.analysis.quality_score) %}
+                {% endif %}
+            {% endfor %}
+            {% set avg_score = (current_scores|sum / current_scores|length)|round(1) if current_scores|length > 0 else 0 %}
+            <div class="stat-card" style="background: #e8f5e8;">
+                <h3>🏆 Current Score: {{ avg_score }}/10</h3>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if question_num < total_questions %}
+    <!-- 🎯 CURRENT QUESTION -->
+    <div class="card">
+        <h3>❓ {{ questions[question_num] }}</h3>
+        
+        <!-- TEXT ANSWER FORM -->
+        <form method="POST" action="/answer">
+            <textarea name="answer" placeholder="Type your answer here... Be specific and use examples!" required></textarea>
+            <br>
+            <button class="btn" type="submit">📝 Submit Answer</button>
+        </form>
+        
+        <!-- VOICE RECORDING SECTION -->
+        <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 10px;">
+            <h4>🎤 Or Record Your Answer</h4>
+            
+            <!-- Recording Controls -->
+            <div id="recordingControls">
+                <button id="startRecord" class="btn btn-success" type="button">🎤 Start Recording</button>
+                <button id="stopRecord" class="btn btn-danger" type="button" disabled>⏹️ Stop Recording</button>
+                <button id="playRecord" class="btn btn-info" type="button" disabled>▶️ Playback</button>
+            </div>
+            
+            <!-- Recording Status -->
+            <div id="recordingStatus" style="margin: 10px 0;">
+                <p id="statusText">Ready to record...</p>
+                <div id="visualizer" style="height: 20px; background: #e9ecef; border-radius: 10px; overflow: hidden; display: none;">
+                    <div id="volumeBar" style="height: 100%; background: #667eea; width: 0%; transition: width 0.1s;"></div>
+                </div>
+            </div>
+            
+            <!-- Submit Voice Answer -->
+            <form method="POST" action="/submit_voice" id="voiceForm" style="display: none;">
+                <input type="hidden" name="audio_data" id="audioData">
+                <button class="btn btn-success" type="submit">✅ Submit Voice Answer</button>
+            </form>
+        </div>
+        
+        <!-- SPEAK QUESTION BUTTON -->
+        <form method="POST" action="/speak">
+            <button class="btn btn-secondary" type="submit">🔊 Speak Question</button>
+        </form>
+    </div>
+
+    {% else %}
+    <!-- 🔄 NEXT ROUND OR COMPLETE -->
+    <div class="card">
+        {% if round_num < 3 %}
+        <h2>🎉 {{ current_round_name }} Complete!</h2>
+        <p>Ready for the next round?</p>
+        <form method="POST" action="/next_round">
+            <button class="btn btn-success" type="submit">🚀 Start {{ round_names[round_num] }}</button>
+        </form>
+        {% else %}
+        <h2>🏆 Interview Complete!</h2>
+        <p>Outstanding performance! Here's your analysis:</p>
+        
+        <!-- 📊 FINAL STATS -->
+        {% set total_answers = session.answers|length %}
+        {% set total_words = 0 %}
+        {% set total_score = 0 %}
+        {% for answer in session.answers %}
+            {% if answer.analysis %}
+                {% set total_words = total_words + answer.analysis.word_count %}
+                {% set total_score = total_score + answer.analysis.quality_score %}
+            {% endif %}
+        {% endfor %}
+        
+        <div class="stats">
+            <div class="stat-card">
+                <h3>{{ total_answers }}</h3>
+                <p>Questions Answered</p>
+            </div>
+            <div class="stat-card">
+                <h3>{{ (total_words / total_answers)|round|int if total_answers > 0 else 0 }}</h3>
+                <p>Avg Words</p>
+            </div>
+            <div class="stat-card">
+                <h3>{{ (total_score / total_answers)|round(1) if total_answers > 0 else 0 }}/10</h3>
+                <p>Final Score</p>
+            </div>
+        </div>
+        
+        <!-- 🎯 SAVE SCORE -->
+        <form method="POST" action="/save_score">
+            <button class="btn btn-info" type="submit">💾 Save My Score</button>
+        </form>
+        
+        <form method="POST" action="/restart">
+            <button class="btn" type="submit">🔄 Start New Interview</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- 📊 LIVE FEEDBACK -->
+    {% if session.answers %}
+    <div class="card">
+        <h3>⚡ Live Feedback</h3>
+        {% set latest = session.answers[-1] %}
+        <div class="feedback">
+            <p><strong>Last Question:</strong> {{ latest.question }}</p>
+            <p><strong>Your Answer:</strong> {{ latest.answer[:100] }}{% if latest.answer|length > 100 %}...{% endif %}</p>
+            {% if latest.analysis %}
+            <p><strong>Feedback:</strong> {{ latest.analysis.feedback }}</p>
+            <div class="stats">
+                <div class="stat-card">
+                    <h4>{{ latest.analysis.word_count }}</h4>
+                    <p>Words</p>
+                </div>
+                <div class="stat-card">
+                    <h4>{{ latest.analysis.quality_score }}/10</h4>
+                    <p>Score</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <script>
+        function closeModal() {
+            // Hide the modal
+            document.getElementById('congratsModal').classList.remove('show');
+            // Remove the session flag
+            window.location.href = '/close_modal';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('congratsModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // Text-to-speech function
+        function speakQuestion() {
+            const questionElement = document.querySelector('.card h3');
+            if (questionElement) {
+                const question = questionElement.textContent.replace('❓ ', '');
+                
+                if ('speechSynthesis' in window) {
+                    const speech = new SpeechSynthesisUtterance(question);
+                    speech.rate = 0.8;
+                    speech.pitch = 1;
+                    speech.volume = 1;
+                    window.speechSynthesis.speak(speech);
+                }
+            }
+        }
+
+        // Voice Recording Functionality
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioContext;
+        let analyser;
+        let recordingInterval;
+
+        const startRecordBtn = document.getElementById('startRecord');
+        const stopRecordBtn = document.getElementById('stopRecord');
+        const playRecordBtn = document.getElementById('playRecord');
+        const statusText = document.getElementById('statusText');
+        const visualizer = document.getElementById('visualizer');
+        const volumeBar = document.getElementById('volumeBar');
+        const audioDataInput = document.getElementById('audioData');
+        const voiceForm = document.getElementById('voiceForm');
+
+        // Only setup recording if elements exist
+        if (startRecordBtn) {
+            startRecordBtn.addEventListener('click', startRecording);
+            stopRecordBtn.addEventListener('click', stopRecording);
+            playRecordBtn.addEventListener('click', playRecording);
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                // Set up audio context for visualization
+                audioContext = new AudioContext();
+                analyser = audioContext.createAnalyser();
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+                analyser.fftSize = 256;
+                
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    
+                    // Convert blob to base64 for form submission
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        audioDataInput.value = reader.result.split(',')[1]; // Get base64 data
+                        voiceForm.style.display = 'block';
+                    };
+                    reader.readAsDataURL(audioBlob);
+                };
+                
+                // Start recording
+                mediaRecorder.start();
+                startRecordBtn.disabled = true;
+                stopRecordBtn.disabled = false;
+                playRecordBtn.disabled = true;
+                statusText.textContent = '🔴 Recording... Speak now!';
+                statusText.style.color = 'red';
+                
+                // Show visualizer and start animation
+                visualizer.style.display = 'block';
+                recordingInterval = setInterval(updateVisualizer, 100);
+                
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                statusText.textContent = '❌ Microphone access denied or not available';
+                statusText.style.color = 'red';
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                
+                startRecordBtn.disabled = false;
+                stopRecordBtn.disabled = true;
+                playRecordBtn.disabled = false;
+                statusText.textContent = '✅ Recording complete! Click Playback to review';
+                statusText.style.color = 'green';
+                
+                // Stop visualizer
+                clearInterval(recordingInterval);
+                visualizer.style.display = 'none';
+                volumeBar.style.width = '0%';
+            }
+        }
+
+        function playRecording() {
+            if (audioChunks.length > 0) {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                audio.play();
+                statusText.textContent = '🔊 Playing back your recording...';
+            }
+        }
+
+        function updateVisualizer() {
+            if (!analyser) return;
+            
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(dataArray);
+            
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
+            }
+            let average = sum / dataArray.length;
+            
+            // Convert to percentage (0-100%)
+            let percentage = Math.min(100, (average / 255) * 100);
+            volumeBar.style.width = percentage + '%';
+            
+            // Change color based on volume
+            if (percentage > 70) {
+                volumeBar.style.background = '#dc3545'; // Red for loud
+            } else if (percentage > 40) {
+                volumeBar.style.background = '#ffc107'; // Yellow for medium
+            } else {
+                volumeBar.style.background = '#28a745'; // Green for quiet
+            }
+        }
+    </script>
+</body>
+</html>
